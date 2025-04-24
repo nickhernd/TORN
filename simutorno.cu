@@ -93,13 +93,67 @@ int LeerSuperficie(char* filename, TSurf* S) {
 
 // Implementación CPU de la simulación
 void SimulacionTornoCPU(TSurf S, float** CPUBufferMenorY) {
-    
+    // Reserva de la malla de salida (mismos puntos que la original)
+    *CPUBufferMenorY = (float*)malloc(S.UPoints * S.VPoints * sizeof(float));
+
+    // Rotación total (360 grados en radianes)
+    float anguloTotal = 2.0f * M_PI;
+    int pasos = PuntosVueltaHelicoide;
+
+    // Para cada punto de la superficie
+    for (int v = 0; v < S.VPoints; v++) {
+        for (int u = 0; u < S.UPoints; u++) {
+            float y_original = S.Buffer[v][u].y;
+            float z_original = S.Buffer[v][u].z;
+
+            float minY = y_original;
+
+            // Simular la rotación sobre el eje X
+            for (int i = 1; i <= pasos; i++) {
+                float angulo = i * PasoHelicoide;  // PasoHelicoide ya viene en radianes
+
+                // Rotación sobre el eje X: solo cambian Y y Z
+                float y_rot = y_original * cos(angulo) - z_original * sin(angulo);
+                float z_rot = y_original * sin(angulo) + z_original * cos(angulo);
+
+                if (y_rot < minY) {
+                    minY = y_rot;
+                }
+            }
+
+            // Guardar el valor mínimo de Y encontrado para este punto
+            (*CPUBufferMenorY)[v * S.UPoints + u] = minY;
+        }
+    }
 }
 
 // Kernel CUDA para la simulación
 __global__ void tornoKernel(TPoints3D* buffer, float* menorY, 
                            int uPoints, int vPoints, 
                            int puntosVuelta, float paso) {
+
+    int u = threadIdx.x + blockIdx.x * blockDim.x;
+    int v = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (u >= uPoints || v >= vPoints) return;
+
+    int idx = v * uPoints + u;
+
+    float y_original = buffer[idx].y;
+    float z_original = buffer[idx].z;
+    float minY = y_original;
+
+    for (int i = 1; i <= puntosVuelta; i++) {
+        float angulo = i * paso;
+
+        float y_rot = y_original * cosf(angulo) - z_original * sinf(angulo);
+
+        if (y_rot < minY) {
+            minY = y_rot;
+        }
+    }
+
+    menorY[idx] = minY;
     
 }
 
