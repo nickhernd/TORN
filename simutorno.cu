@@ -91,7 +91,7 @@ int LeerSuperficie(char* filename, TSurf* S) {
     return 1;
 }
 
-// Implementación CPU de la simulación
+// Implementación en CPU de la simulación
 void SimulacionTornoCPU(TSurf S, float** CPUBufferMenorY) {
     // Reserva de la malla de salida (mismos puntos que la original)
     *CPUBufferMenorY = (float*)malloc(S.UPoints * S.VPoints * sizeof(float));
@@ -157,14 +157,93 @@ __global__ void tornoKernel(TPoints3D* buffer, float* menorY,
     
 }
 
-// Implementación GPU de la simulación
+// Implementación en GPU de la simulación
 void SimulacionTornoGPU(TSurf S, float** GPUBufferMenorY) {
-   
+    int numPuntos = S.UPoints * S.VPoints;
+
+    // Reservar memoria en GPU
+    TPoints3D* GPU_buffer;
+    float* GPU_menorY;
+    // Asignamos memoria en la GPU para la malla de puntos (S.Buffer)
+    cudaMalloc((void**)&GPU_buffer, numPuntos * sizeof(TPoints3D));
+    // Asignamos memoria en la GPU para el buffer de resultados
+    cudaMalloc((void**)&GPU_menorY, numPuntos * sizeof(float));
+
+    // Crear array plano de TPoints3D para copiar desde la CPU
+    TPoints3D* buffer_plano = (TPoints3D*)malloc(numPuntos * sizeof(TPoints3D));
+    for (int v = 0; v < S.VPoints; ++v) {
+        for (int u = 0; u < S.UPoints; ++u) {
+            buffer_plano[v * S.UPoints + u] = S.Buffer[v][u];
+        }
+    }
+
+    // Copiar superficie a GPU
+    cudaMemcpy(GPU_buffer, buffer_plano, numPuntos * sizeof(TPoints3D), cudaMemcpyHostToDevice);
+
+    // Definir bloques e hilos
+    dim3 blockSize(16, 16);  //16x16 es un estandar razonable, pero se podría buscar otras configuraciónes según el tamaño de la malla
+    dim3 gridSize((S.UPoints + blockSize.x - 1) / blockSize.x,
+                  (S.VPoints + blockSize.y - 1) / blockSize.y);
+
+    // Ejecutar kernel de simulación
+    tornoKernel<<<gridSize, blockSize>>>(GPU_buffer, GPU_menorY,
+                                         S.UPoints, S.VPoints,
+                                         PuntosVueltaHelicoide, PasoHelicoide);
+
+    // Esperar finalización y chequear errores
+    cudaDeviceSynchronize();
+
+    // Reservar salida en CPU
+    *GPUBufferMenorY = (float*)malloc(numPuntos * sizeof(float));
+    // Copiar resultados a CPU
+    cudaMemcpy(*GPUBufferMenorY, GPU_menorY, numPuntos * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Liberar recursos
+    free(buffer_plano);
+    cudaFree(GPU_buffer);
+    cudaFree(GPU_menorY);
 }
 
 // Función de prueba
 void runTest(char* filename) {
-   
+    TSurf superficie;
+    float *CPUBuffer = NULL, *GPUBuffer = NULL;
+
+    if (!LeerSuperficie(filename, &superficie)) {
+        printf("Error leyendo la superficie\n");
+        return;
+    }
+
+    
+    // Ejecutar CPU
+    //TODO: Registrar tiempo ejecución CPU
+    SimulacionTornoCPU(superficie, &CPUBuffer);
+
+    // Ejecutar GPU
+    //TODO: Registrar tiempo ejecución GPU
+    SimulacionTornoGPU(superficie, &GPUBuffer);
+
+    // Comparar resultados
+    int errores = 0;
+    int total = superficie.UPoints * superficie.VPoints;
+    for (int i = 0; i < total; i++) {
+        if (fabs(CPUBuffer[i] - GPUBuffer[i]) > 1e-5) {
+            errores++;
+            if (errores < 10)  // mostrar los primeros errores
+                printf("Error en punto %d: CPU = %f, GPU = %f\n", i, CPUBuffer[i], GPUBuffer[i]);
+        }
+    }
+
+    if (errores == 0){
+        printf("¡Correcto! CPU y GPU coinciden.\n");
+        //TODO: obtener tiempos de ejecucion CPU vs GPU
+    }
+    else
+        printf("Diferencias detectadas en %d puntos\n", errores);
+
+    free(CPUBuffer);
+    free(GPUBuffer);
+    BorrarSuperficie(&superficie);
 }
 
 // Programa principal
