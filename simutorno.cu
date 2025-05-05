@@ -97,7 +97,7 @@ void SimulacionTornoCPU(TSurf S, float** CPUBufferMenorY) {
     *CPUBufferMenorY = (float*)malloc(S.UPoints * S.VPoints * sizeof(float));
 
     // Rotación total (360 grados en radianes)
-    float anguloTotal = 2.0f * M_PI;
+    //float anguloTotal = 2.0f * M_PI;
     int pasos = PuntosVueltaHelicoide;
 
     // Para cada punto de la superficie
@@ -232,6 +232,8 @@ void runTest(char* filename) {
             if (errores < 10)  // mostrar los primeros errores
                 printf("Error en punto %d: CPU = %f, GPU = %f\n", i, CPUBuffer[i], GPUBuffer[i]);
         }
+		/*else 
+			printf("Correcto punto %d: CPU = %f, GPU = %f\n", i, CPUBuffer[i], GPUBuffer[i]);*/
     }
 
     if (errores == 0){

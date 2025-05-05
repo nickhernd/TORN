@@ -26,6 +26,10 @@ int LeerSuperficie(char* filename, TSurf* S);
 
 // Funciones de simulación
 void SimulacionTornoCPU(TSurf S, float* CPUBufferMenorY);
+
+// Kernel CUDA para la simulación
+__global__ void tornoKernel(TPoints3D* buffer, float* menorY, int uPoints, int vPoints, int puntosVuelta, float paso);
 void SimulacionTornoGPU(TSurf S, float* GPUBufferMenorY);
 
+void runTest(char* filename);
 #endif // SIMUTORNO_H
