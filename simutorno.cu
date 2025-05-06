@@ -5,6 +5,7 @@
 #include <time.h>
 #include <cuda_runtime.h>
 #include "simutorno.h"
+#include <chrono>
 
 // Variables globales
 int PuntosVueltaHelicoide;
@@ -213,15 +214,20 @@ void runTest(char* filename) {
         printf("Error leyendo la superficie\n");
         return;
     }
-
     
     // Ejecutar CPU
-    //TODO: Registrar tiempo ejecución CPU
+    //TODO: Registrar tiempo ejecución CPU    
+    auto start_cpu = std::chrono::high_resolution_clock::now();
     SimulacionTornoCPU(superficie, &CPUBuffer);
+    auto end_cpu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration_CPU = end_cpu - start_cpu;
 
     // Ejecutar GPU
     //TODO: Registrar tiempo ejecución GPU
+    auto start_gpu = std::chrono::high_resolution_clock::now();
     SimulacionTornoGPU(superficie, &GPUBuffer);
+    auto end_gpu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration_GPU = end_gpu - start_gpu;
 
     // Comparar resultados
     int errores = 0;
@@ -238,7 +244,9 @@ void runTest(char* filename) {
 
     if (errores == 0){
         printf("¡Correcto! CPU y GPU coinciden.\n");
-        //TODO: obtener tiempos de ejecucion CPU vs GPU
+        printf("Tiempo en CPU | Tiempo en GPU\n");
+        printf("-----------------------------\n");        
+        printf("%f | %f \n", duration_CPU, duration_GPU);
     }
     else
         printf("Diferencias detectadas en %d puntos\n", errores);
