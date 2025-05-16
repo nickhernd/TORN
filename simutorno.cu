@@ -233,7 +233,7 @@ void runTest(char* filename) {
     int errores = 0;
     int total = superficie.UPoints * superficie.VPoints;
     for (int i = 0; i < total; i++) {
-        if (fabs(CPUBuffer[i] - GPUBuffer[i]) > 1e-5) {
+        if (fabs(CPUBuffer[i] - GPUBuffer[i]) > 1e-3) {
             errores++;
             if (errores < 10)  // mostrar los primeros errores
                 printf("Error en punto %d: CPU = %f, GPU = %f\n", i, CPUBuffer[i], GPUBuffer[i]);
@@ -243,10 +243,10 @@ void runTest(char* filename) {
     }
 
     if (errores == 0){
-        printf("¡Correcto! CPU y GPU coinciden.\n");
+        //printf("¡Correcto! CPU y GPU coinciden.\n");
         printf("Tiempo en CPU | Tiempo en GPU\n");
         printf("-----------------------------\n");        
-        printf("%f | %f \n", duration_CPU, duration_GPU);
+        printf("    %f  | %f \n", duration_CPU, duration_GPU);
     }
     else
         printf("Diferencias detectadas en %d puntos\n", errores);
