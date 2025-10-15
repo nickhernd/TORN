@@ -1,0 +1,151 @@
+# Makefile para versión DEMO (sin CUDA)
+# Usa stubs de CPU en lugar de kernels CUDA
+
+CXX = g++
+
+# Flags
+CXX_FLAGS = -std=c++17 -O3 -Wall
+INCLUDE_FLAGS = -I. -Iexternal/glad/include -Iviz/include -Igui/include -Iexternal/imgui -Iexternal/imgui/backends
+LIBS = -lglfw -lGL -lm -ldl -lpthread
+
+# Ejecutables
+TARGET_DEMO = torn-demo
+
+# Archivos fuente STUB (reemplaza CUDA)
+STUB_SRC = simutorno_stub.cpp
+STUB_OBJ = simutorno_stub.o
+
+# Archivos fuente del visualizador
+VIZ_OBJS = main_viz_gui.o visualizer.o shader.o mesh.o camera.o glad.o
+
+# Archivos fuente de ImGui
+IMGUI_DIR = external/imgui
+IMGUI_OBJS = imgui.o imgui_demo.o imgui_draw.o imgui_tables.o imgui_widgets.o \
+             imgui_impl_glfw.o imgui_impl_opengl3.o
+
+# Archivos fuente de la GUI
+GUI_OBJS = gui_manager.o
+
+# Todos los objetos
+ALL_OBJS = $(VIZ_OBJS) $(IMGUI_OBJS) $(GUI_OBJS) $(STUB_OBJ)
+
+# Regla principal
+all: check_deps $(TARGET_DEMO)
+
+# Verificar dependencias
+check_deps:
+	@echo "Verificando dependencias OpenGL..."
+	@pkg-config --exists glfw3 || (echo "ERROR: GLFW3 no encontrado. Instala con: sudo apt-get install libglfw3-dev" && exit 1)
+	@pkg-config --exists gl || (echo "ERROR: OpenGL no encontrado. Instala con: sudo apt-get install libgl1-mesa-dev" && exit 1)
+	@test -d /usr/include/glm || (echo "ERROR: GLM no encontrado. Instala con: sudo apt-get install libglm-dev" && exit 1)
+	@echo "Dependencias OK!"
+
+# Ejecutable demo
+$(TARGET_DEMO): $(ALL_OBJS)
+	@echo "Linkeando ejecutable demo..."
+	$(CXX) $(CXX_FLAGS) -o $@ $^ $(LIBS)
+	@echo "Compilacion exitosa! Ejecuta con: ./$(TARGET_DEMO) ejemplo.for"
+
+# Compilar stub de simulacion
+$(STUB_OBJ): $(STUB_SRC)
+	@echo "Compilando stub de simulacion (sin CUDA)..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Compilar programa principal
+main_viz_gui.o: main_viz_gui.cpp
+	@echo "Compilando programa principal..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Compilar modulo de visualizacion
+visualizer.o: viz/src/visualizer.cpp
+	@echo "Compilando visualizer..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+shader.o: viz/src/shader.cpp
+	@echo "Compilando shader manager..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+mesh.o: viz/src/mesh.cpp
+	@echo "Compilando mesh renderer..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+camera.o: viz/src/camera.cpp
+	@echo "Compilando camera..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Compilar GLAD
+glad.o: external/glad/src/gl.c
+	@echo "Compilando GLAD..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Compilar ImGui
+imgui.o: $(IMGUI_DIR)/imgui.cpp
+	@echo "Compilando ImGui core..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_demo.o: $(IMGUI_DIR)/imgui_demo.cpp
+	@echo "Compilando ImGui demo..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_draw.o: $(IMGUI_DIR)/imgui_draw.cpp
+	@echo "Compilando ImGui draw..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_tables.o: $(IMGUI_DIR)/imgui_tables.cpp
+	@echo "Compilando ImGui tables..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_widgets.o: $(IMGUI_DIR)/imgui_widgets.cpp
+	@echo "Compilando ImGui widgets..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_impl_glfw.o: $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp
+	@echo "Compilando ImGui backend GLFW..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+imgui_impl_opengl3.o: $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
+	@echo "Compilando ImGui backend OpenGL3..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Compilar GUI
+gui_manager.o: gui/src/gui_manager.cpp
+	@echo "Compilando GUI manager..."
+	$(CXX) $(CXX_FLAGS) $(INCLUDE_FLAGS) -c $< -o $@
+
+# Limpiar
+clean:
+	@echo "Limpiando archivos compilados..."
+	rm -f $(ALL_OBJS) $(TARGET_DEMO)
+
+# Ejecutar
+run: $(TARGET_DEMO)
+	./$(TARGET_DEMO) ejemplo.for
+
+# Instalar dependencias (requiere sudo)
+install-deps:
+	@echo "Instalando dependencias OpenGL..."
+	sudo apt-get update
+	sudo apt-get install -y libglfw3-dev libglm-dev libgl1-mesa-dev
+	@echo "Dependencias instaladas!"
+
+# Ayuda
+help:
+	@echo "=== Makefile DEMO (sin CUDA) ==="
+	@echo ""
+	@echo "Targets disponibles:"
+	@echo "  all           - Compilar version demo"
+	@echo "  run           - Ejecutar version demo"
+	@echo "  clean         - Limpiar archivos compilados"
+	@echo "  install-deps  - Instalar dependencias (requiere sudo)"
+	@echo "  check_deps    - Verificar si dependencias estan instaladas"
+	@echo "  help          - Mostrar esta ayuda"
+	@echo ""
+	@echo "Esta version usa stubs de CPU en lugar de CUDA."
+	@echo "Ideal para desarrollo y testing sin GPU NVIDIA."
+	@echo ""
+	@echo "Uso rapido:"
+	@echo "  make -f Makefile.demo install-deps  # Solo primera vez"
+	@echo "  make -f Makefile.demo                # Compilar"
+	@echo "  ./torn-demo ejemplo.for              # Ejecutar"
+
+.PHONY: all check_deps clean run install-deps help
